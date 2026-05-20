@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  passwordHash  String?
+  role          String    @default("CUSTOMER") // CUSTOMER, TAILOR, ADMIN
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tailorProfile   TailorProfile?
+  customerProfile CustomerProfile?
+  reviewsGiven    Review[]         @relation("ReviewAuthor")
+}
+
+model TailorProfile {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  shopName       String?
+  bio            String?
+  address        String?
+  city           String?
+  operatingHours String?
+  travelRadius   Int?      @default(10) // miles
+  travelFee      Float?    @default(0.0) // dollars
+  latitude       Float?
+  longitude      Float?
+  profilePicture String?
+  isVerified     Boolean   @default(false)
+  
+  services       Service[]
+  fabrics        Fabric[]
+  bookings       Booking[]
+  reviews        Review[]  @relation("TailorReviews")
+  portfolio      PortfolioItem[]
+}
+
+model CustomerProfile {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  address        String?
+  city           String?
+  
+  measurements   Measurement[]
+  bookings       Booking[]
+}
+
+model Measurement {
+  id                String          @id @default(cuid())
+  customerProfileId String
+  customer          CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  name              String          @default("Default Fit")
+  
+  // Generic measurements (in cm or inches)
+  neck              Float?
+  chest             Float?
+  waist             Float?
+  hips              Float?
+  inseam            Float?
+  sleeve            Float?
+  shoulder          Float?
+  
+  updatedAt         DateTime        @updatedAt
+}
+
+model Service {
+  id              String        @id @default(cuid())
+  tailorProfileId String
+  tailor          TailorProfile @relation(fields: [tailorProfileId], references: [id], onDelete: Cascade)
+  
+  name            String
+  description     String?
+  category        String        // e.g., "Men", "Women", "Kids"
+  occasion        String?       // e.g., "Office Wear", "Party", "Bridal"
+  price           Float
+  estimatedDays   Int?
+  
+  bookings        Booking[]
+}
+
+model Fabric {
+  id              String        @id @default(cuid())
+  tailorProfileId String
+  tailor          TailorProfile @relation(fields: [tailorProfileId], references: [id], onDelete: Cascade)
+  
+  name            String
+  material        String        // e.g., "Cotton", "Silk", "Wool"
+  pricePerMeter   Float
+  inStock         Boolean       @default(true)
+}
+
+model Booking {
+  id              String              @id @default(cuid())
+  
+  customerId      String
+  customer        CustomerProfile     @relation(fields: [customerId], references: [id])
+  
+  tailorId        String
+  tailor          TailorProfile       @relation(fields: [tailorId], references: [id])
+  
+  serviceId       String
+  service         Service             @relation(fields: [serviceId], references: [id])
+  
+  status          String              @default("PENDING") // PENDING, ACCEPTED, COMPLETED...
+  deliveryType    String              // HOME_VISIT, SHOP_VISIT
+  
+  appointmentDate DateTime
+  appointmentTime String              // e.g., "10:00 AM"
+  notes           String?
+  referenceImage  String?             // Uploaded design reference
+  pickupAddress   String?
+  pickupLatitude  Float?
+  pickupLongitude Float?
+  distance        Float?
+  
+  payment         Payment?            // Link to the escrow payment
+  chatMessages    ChatMessage[]
+  milestones      BookingMilestone[]
+  
+  // Per-order measurements (copies from profile but can be edited independently)
+  neck            Float?
+  chest           Float?
+  waist           Float?
+  hips            Float?
+  inseam          Float?
+  sleeve          Float?
+  shoulder        Float?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  senderRole  String   // CUSTOMER, TAILOR
+  text        String
+  createdAt   DateTime @default(now())
+}
+
+model Review {
+  id              String        @id @default(cuid())
+  rating          Int           // 1-5
+  comment         String?
+  image           String?       // Base64 review image of custom fitting
+  
+  authorId        String
+  author          User          @relation("ReviewAuthor", fields: [authorId], references: [id])
+  
+  tailorProfileId String
+  tailor          TailorProfile @relation("TailorReviews", fields: [tailorProfileId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime      @default(now())
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  bookingId       String        @unique
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  totalAmount     Float
+  platformFee     Float         // 5% cut
+  tailorEarnings  Float         // 95% cut
+  
+  status          String        @default("ESCROW") // ESCROW, RELEASED, REFUNDED
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model BookingMilestone {
+  id          String   @id @default(cuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  title       String   // e.g., "Cutting Fabric", "Stitching Started"
+  description String?
+  image       String?  // Base64 progress image uploaded by tailor
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PortfolioItem {
+  id              String        @id @default(cuid())
+  tailorProfileId String
+  tailor          TailorProfile @relation(fields: [tailorProfileId], references: [id], onDelete: Cascade)
+  image           String        // Base64 portfolio image
+  title           String
+  description     String?
+  serviceCategory String?       // e.g., "Men", "Women"
+  createdAt       DateTime      @default(now())
+}

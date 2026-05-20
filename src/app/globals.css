@@ -1,26 +1,48 @@
 @import "tailwindcss";
-
+ 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #ffffff; /* Total White background */
+  --foreground: #0c4a6e; /* Deep ocean sky-blue text */
+  --primary: #0284c7; /* Vibrant Sky Blue */
+  --primary-foreground: #ffffff;
+  --card: #ffffff; /* Pure white cards */
+  --card-foreground: #0f172a;
+  --border: #bae6fd; /* Sky blue border outline */
+  --input: #bae6fd;
+  --ring: #0284c7;
+  --radius: 1rem;
 }
-
+ 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius: var(--radius);
+  --font-sans: var(--font-sans);
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+ 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+ 
+/* Glassmorphism utility - Premium White Translucent Glass */
+.glass {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(2, 132, 199, 0.2) !important; /* Sky blue translucent border */
+  color: var(--foreground) !important;
+}
+ 
+/* Ensure all main content sections and containers render with white backgrounds */
+main, section, header, footer {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
 }
