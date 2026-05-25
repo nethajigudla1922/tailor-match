@@ -9,6 +9,8 @@ import { BookingTracker } from "@/components/BookingTracker";
 import { BookingChat } from "@/components/BookingChat";
 import { EscrowActions } from "./EscrowActions";
  
+export const dynamic = 'force-dynamic';
+
 export default async function CustomerDashboard() {
   const session = await getServerSession(authOptions);
  

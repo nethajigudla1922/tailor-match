@@ -13,6 +13,8 @@ import { BookingChat } from "@/components/BookingChat";
 import { PortfolioManager } from "./PortfolioManager";
 import { RecordMeasurementsModal } from "./RecordMeasurementsModal";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TailorDashboard() {
   const session = await getServerSession(authOptions);
 
