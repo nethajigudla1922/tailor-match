@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { 
       tailorId, serviceId, fabricId, deliveryType, appointmentDate, appointmentTime, notes, referenceImage, totalPrice,
-      neck, chest, waist, hips, inseam, sleeve, shoulder
+      neck, chest, waist, hips, inseam, sleeve, shoulder, armHole
     } = body;
 
     const tailor = await prisma.tailorProfile.findUnique({
@@ -105,7 +105,8 @@ export async function POST(req: Request) {
         hips: hips !== undefined ? (hips === null ? null : parseFloat(hips)) : (defaultMeasurement?.hips || null),
         inseam: inseam !== undefined ? (inseam === null ? null : parseFloat(inseam)) : (defaultMeasurement?.inseam || null),
         sleeve: sleeve !== undefined ? (sleeve === null ? null : parseFloat(sleeve)) : (defaultMeasurement?.sleeve || null),
-        shoulder: shoulder !== undefined ? (shoulder === null ? null : parseFloat(shoulder)) : (defaultMeasurement?.shoulder || null)
+        shoulder: shoulder !== undefined ? (shoulder === null ? null : parseFloat(shoulder)) : (defaultMeasurement?.shoulder || null),
+        armHole: armHole !== undefined ? (armHole === null ? null : parseFloat(armHole)) : (defaultMeasurement?.armHole || null)
       }
     });
 
@@ -135,52 +136,68 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((session.user as any).role !== "CUSTOMER") {
-      return NextResponse.json({ error: "Only customers can edit bookings" }, { status: 403 });
-    }
-
-    const customer = await prisma.customerProfile.findUnique({
-      where: { userId: session.user.id as string }
-    });
-
-    if (!customer) {
-      return NextResponse.json({ error: "Customer profile not found" }, { status: 404 });
+    const role = (session.user as any).role;
+    if (role !== "CUSTOMER" && role !== "TAILOR") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     const body = await req.json();
-    const { bookingId, appointmentDate, appointmentTime, notes, referenceImage, deliveryType, neck, chest, waist, hips, inseam, sleeve, shoulder } = body;
+    const { bookingId, appointmentDate, appointmentTime, notes, referenceImage, deliveryType, neck, chest, waist, hips, inseam, sleeve, shoulder, armHole } = body;
 
-    const booking = await prisma.booking.findFirst({
-      where: {
-        id: bookingId,
-        customerId: customer.id
-      }
-    });
+    let booking;
+    if (role === "CUSTOMER") {
+      const customer = await prisma.customerProfile.findUnique({
+        where: { userId: session.user.id as string }
+      });
+      if (!customer) return NextResponse.json({ error: "Customer profile not found" }, { status: 404 });
+      
+      booking = await prisma.booking.findFirst({
+        where: { id: bookingId, customerId: customer.id }
+      });
+    } else {
+      const tailor = await prisma.tailorProfile.findUnique({
+        where: { userId: session.user.id as string }
+      });
+      if (!tailor) return NextResponse.json({ error: "Tailor profile not found" }, { status: 404 });
+      
+      booking = await prisma.booking.findFirst({
+        where: { id: bookingId, tailorId: tailor.id }
+      });
+    }
 
     if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    if (booking.status !== "PENDING") {
+    if (role === "CUSTOMER" && booking.status !== "PENDING") {
       return NextResponse.json({ error: "Booking cannot be edited once accepted by the tailor" }, { status: 400 });
     }
 
-    const updatedBooking = await prisma.booking.update({
-      where: { id: bookingId },
-      data: {
+    let updateData: any = {};
+    if (role === "CUSTOMER") {
+      updateData = {
         appointmentDate: appointmentDate ? new Date(appointmentDate) : undefined,
         appointmentTime: appointmentTime || undefined,
         notes: notes !== undefined ? notes : undefined,
         referenceImage: referenceImage !== undefined ? referenceImage : undefined,
         deliveryType: deliveryType || undefined,
-        neck: neck !== undefined ? (neck === null ? null : parseFloat(neck)) : undefined,
-        chest: chest !== undefined ? (chest === null ? null : parseFloat(chest)) : undefined,
-        waist: waist !== undefined ? (waist === null ? null : parseFloat(waist)) : undefined,
-        hips: hips !== undefined ? (hips === null ? null : parseFloat(hips)) : undefined,
-        inseam: inseam !== undefined ? (inseam === null ? null : parseFloat(inseam)) : undefined,
-        sleeve: sleeve !== undefined ? (sleeve === null ? null : parseFloat(sleeve)) : undefined,
-        shoulder: shoulder !== undefined ? (shoulder === null ? null : parseFloat(shoulder)) : undefined
-      }
+      };
+    } else {
+      updateData = {
+        neck: neck !== undefined ? (neck === null || neck === "" ? null : parseFloat(neck)) : undefined,
+        chest: chest !== undefined ? (chest === null || chest === "" ? null : parseFloat(chest)) : undefined,
+        waist: waist !== undefined ? (waist === null || waist === "" ? null : parseFloat(waist)) : undefined,
+        hips: hips !== undefined ? (hips === null || hips === "" ? null : parseFloat(hips)) : undefined,
+        inseam: inseam !== undefined ? (inseam === null || inseam === "" ? null : parseFloat(inseam)) : undefined,
+        sleeve: sleeve !== undefined ? (sleeve === null || sleeve === "" ? null : parseFloat(sleeve)) : undefined,
+        shoulder: shoulder !== undefined ? (shoulder === null || shoulder === "" ? null : parseFloat(shoulder)) : undefined,
+        armHole: armHole !== undefined ? (armHole === null || armHole === "" ? null : parseFloat(armHole)) : undefined
+      };
+    }
+
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: updateData
     });
 
     return NextResponse.json({ message: "Booking updated successfully", booking: updatedBooking });

@@ -38,6 +38,7 @@ export async function POST(req: Request) {
           inseam: parseFloat(data.inseam) || null,
           sleeve: parseFloat(data.sleeve) || null,
           shoulder: parseFloat(data.shoulder) || null,
+          armHole: parseFloat(data.armHole) || null,
         }
       });
     } else {
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
           inseam: parseFloat(data.inseam) || null,
           sleeve: parseFloat(data.sleeve) || null,
           shoulder: parseFloat(data.shoulder) || null,
+          armHole: parseFloat(data.armHole) || null,
         }
       });
     }

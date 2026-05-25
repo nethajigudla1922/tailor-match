@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Scissors } from "lucide-react";
+import { Scissors, LogOut, LayoutDashboard } from "lucide-react";
 import { motion } from "framer-motion";
+import { useSession, signOut } from "next-auth/react";
 
 export function Navbar() {
+  const { data: session } = useSession();
+  const user = session?.user as any;
+
   return (
     <motion.header 
       initial={{ y: -100 }}
@@ -33,12 +37,41 @@ export function Navbar() {
         </nav>
         
         <div className="flex items-center space-x-4">
-          <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">
-            Log in
-          </Link>
-          <Link href="/signup" className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20">
-            Sign up
-          </Link>
+          {session ? (
+            <>
+              <Link 
+                href="/dashboard" 
+                className="text-sm font-bold text-primary flex items-center space-x-1 hover:text-primary/80 transition-colors"
+              >
+                <LayoutDashboard size={16} />
+                <span>
+                  {user?.role === "ADMIN" 
+                    ? "Admin Dashboard" 
+                    : user?.role === "TAILOR" 
+                      ? "Tailor Dashboard" 
+                      : "Customer Dashboard"
+                  }
+                </span>
+              </Link>
+              
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="text-sm font-medium border border-border hover:bg-muted px-4 py-2 rounded-full transition-all flex items-center space-x-1.5 cursor-pointer text-foreground"
+              >
+                <LogOut size={14} className="text-muted-foreground" />
+                <span>Log out</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">
+                Log in
+              </Link>
+              <Link href="/signup" className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-full hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20">
+                Sign up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </motion.header>

@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Scissors } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,7 +32,7 @@ export default function LoginPage() {
       setError("Invalid email or password");
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      router.push(callbackUrl || "/dashboard");
       router.refresh();
     }
   };
@@ -89,9 +92,30 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 text-center text-sm text-muted-foreground">
-          Don't have an account? <Link href="/signup" className="text-primary hover:underline font-medium">Sign up</Link>
+          Don't have an account?{" "}
+          <Link 
+            href={callbackUrl ? `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/signup"} 
+            className="text-primary hover:underline font-medium"
+          >
+            Sign up
+          </Link>
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-24 flex items-center justify-center min-h-[80vh]">
+        <div className="glass p-10 md:p-14 rounded-3xl w-full max-w-lg border border-primary/20 shadow-2xl text-center">
+          <Scissors className="w-8 h-8 text-primary mx-auto mb-3 animate-spin" />
+          <p className="text-muted-foreground text-sm font-semibold">Loading Secure Login...</p>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

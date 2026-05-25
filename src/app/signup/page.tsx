@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Scissors } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -35,8 +38,8 @@ export default function SignupPage() {
         throw new Error(data.error || "Something went wrong");
       }
 
-      // Success, redirect to login
-      router.push("/login");
+      // Success, redirect to login with callbackUrl preserved
+      router.push(callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/login");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -136,9 +139,30 @@ export default function SignupPage() {
         </form>
 
         <div className="mt-8 text-center text-sm text-muted-foreground">
-          Already have an account? <Link href="/login" className="text-primary hover:underline font-medium">Log in</Link>
+          Already have an account?{" "}
+          <Link 
+            href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/login"} 
+            className="text-primary hover:underline font-medium"
+          >
+            Log in
+          </Link>
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-24 flex items-center justify-center min-h-[80vh]">
+        <div className="glass p-10 md:p-14 rounded-3xl w-full max-w-xl border border-primary/20 shadow-2xl text-center">
+          <Scissors className="w-8 h-8 text-primary mx-auto mb-3 animate-spin" />
+          <p className="text-muted-foreground text-sm font-semibold">Loading Secure Signup...</p>
+        </div>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   );
 }

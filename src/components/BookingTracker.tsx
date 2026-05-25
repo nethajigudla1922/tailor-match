@@ -1,11 +1,12 @@
 "use client";
 
-import { Check, Scissors, Hourglass, ShoppingBag } from "lucide-react";
+import { Check, Scissors, Hourglass, ShoppingBag, MapPin } from "lucide-react";
 
-export function BookingTracker({ status }: { status: string }) {
+export function BookingTracker({ status, deliveryType = "SHOP_VISIT" }: { status: string; deliveryType?: string }) {
   const steps = [
     { key: "PENDING", label: "Request Sent", desc: "Awaiting tailor review", icon: Hourglass },
     { key: "ACCEPTED", label: "Tailor Confirmed", desc: "Booking accepted", icon: Check },
+    ...(deliveryType === "HOME_VISIT" ? [{ key: "HOME_VISIT", label: "Home Visit", desc: "Tailor visit in progress", icon: MapPin }] : []),
     { key: "IN_PROGRESS", label: "In Sewing", desc: "Crafting your fit", icon: Scissors },
     { key: "COMPLETED", label: "Completed", desc: "Ready for pickup", icon: ShoppingBag }
   ];
@@ -42,7 +43,7 @@ export function BookingTracker({ status }: { status: string }) {
           const isPending = idx > activeIndex;
 
           return (
-            <div key={step.key} className="flex flex-col items-center w-1/4 text-center group">
+            <div key={step.key} className="flex flex-col items-center flex-1 text-center group">
               {/* Stepper Circle */}
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${

@@ -22,6 +22,7 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
     inseam: "",
     sleeve: "",
     shoulder: "",
+    armHole: "",
   });
  
   // Load selected profile data into form
@@ -38,6 +39,7 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
           inseam: selected.inseam !== null && selected.inseam !== undefined ? selected.inseam.toString() : "",
           sleeve: selected.sleeve !== null && selected.sleeve !== undefined ? selected.sleeve.toString() : "",
           shoulder: selected.shoulder !== null && selected.shoulder !== undefined ? selected.shoulder.toString() : "",
+          armHole: selected.armHole !== null && selected.armHole !== undefined ? selected.armHole.toString() : "",
         });
       }
     } else {
@@ -50,6 +52,7 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
         inseam: "",
         sleeve: "",
         shoulder: "",
+        armHole: "",
       });
     }
   }, [selectedProfileId, initialData]);
@@ -61,12 +64,12 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
   // Autofill size preset standard values
   const handleApplyPreset = (size: string) => {
     const presets: Record<string, typeof formData> = {
-      XS: { neck: "13.5", chest: "32", waist: "26", hips: "32", inseam: "28", sleeve: "31.5", shoulder: "16" },
-      S: { neck: "14.5", chest: "36", waist: "30", hips: "36", inseam: "29", sleeve: "32.5", shoulder: "17" },
-      M: { neck: "15.5", chest: "40", waist: "34", hips: "40", inseam: "30", sleeve: "33.5", shoulder: "18" },
-      L: { neck: "16.5", chest: "44", waist: "38", hips: "44", inseam: "31", sleeve: "34.5", shoulder: "19" },
-      XL: { neck: "17.5", chest: "48", waist: "42", hips: "48", inseam: "32", sleeve: "35.5", shoulder: "20" },
-      XXL: { neck: "18.5", chest: "52", waist: "46", hips: "52", inseam: "33", sleeve: "36.5", shoulder: "21" },
+      XS: { neck: "13.5", chest: "32", waist: "26", hips: "32", inseam: "28", sleeve: "31.5", shoulder: "16", armHole: "14" },
+      S: { neck: "14.5", chest: "36", waist: "30", hips: "36", inseam: "29", sleeve: "32.5", shoulder: "17", armHole: "15.5" },
+      M: { neck: "15.5", chest: "40", waist: "34", hips: "40", inseam: "30", sleeve: "33.5", shoulder: "18", armHole: "17" },
+      L: { neck: "16.5", chest: "44", waist: "38", hips: "44", inseam: "31", sleeve: "34.5", shoulder: "19", armHole: "18.5" },
+      XL: { neck: "17.5", chest: "48", waist: "42", hips: "48", inseam: "32", sleeve: "35.5", shoulder: "20", armHole: "20" },
+      XXL: { neck: "18.5", chest: "52", waist: "46", hips: "52", inseam: "33", sleeve: "36.5", shoulder: "21", armHole: "21.5" },
     };
  
     const preset = presets[size];
@@ -119,6 +122,7 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
     const i = parseFloat(formData.inseam);
     const sl = parseFloat(formData.sleeve);
     const sh = parseFloat(formData.shoulder);
+    const ah = parseFloat(formData.armHole);
  
     if (formData.neck && (n < 10 || n > 25)) warnings.push("Neck size seems atypical (standard is 10-25 inches).");
     if (formData.chest && (c < 25 || c > 75)) warnings.push("Chest size seems atypical (standard is 25-75 inches).");
@@ -127,6 +131,7 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
     if (formData.inseam && (i < 15 || i > 45)) warnings.push("Inseam size seems atypical (standard is 15-45 inches).");
     if (formData.sleeve && (sl < 15 || sl > 45)) warnings.push("Sleeve size seems atypical (standard is 15-45 inches).");
     if (formData.shoulder && (sh < 10 || sh > 30)) warnings.push("Shoulder width seems atypical (standard is 10-30 inches).");
+    if (formData.armHole && (ah < 10 || ah > 30)) warnings.push("Arm hole size seems atypical (standard is 10-30 inches).");
  
     if (formData.chest && formData.waist && Math.abs(c - w) > 25) {
       warnings.push(`Waist (${w}") and Chest (${c}") ratio seems highly atypical for standard designs.`);
@@ -164,6 +169,7 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
         inseam: "",
         sleeve: "",
         shoulder: "",
+        armHole: "",
       });
       setSuccess(false);
       alert("Sizing profile successfully deleted.");
@@ -193,6 +199,8 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
         return "Sleeve: Measure from your shoulder seam down to your wrist bone.";
       case "shoulder":
         return "Shoulder: Measure across the back from the edge of one shoulder bone to the other.";
+      case "armHole":
+        return "Arm Hole: Measure around the shoulder joint, running the tape under the arm and over the top of the shoulder.";
       default:
         return "Tip: Click or focus on any measurement box on the left for a live guide on where to measure.";
     }
@@ -302,6 +310,7 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
               { label: "Inseam (inches)", name: "inseam" },
               { label: "Sleeve (inches)", name: "sleeve" },
               { label: "Shoulder (inches)", name: "shoulder" },
+              { label: "Arm Hole (inches)", name: "armHole" },
             ].map((field) => (
               <div key={field.name}>
                 <label className="block text-sm font-medium mb-2">{field.label}</label>
@@ -374,6 +383,12 @@ export function MeasurementForm({ initialData = [] }: { initialData?: any[] }) {
               )}
               {focusedField === "inseam" && (
                 <path d="M 60,162 L 48,220 L 46,275" className="stroke-primary stroke-[3.5] stroke-linecap-round fill-none animate-pulse" />
+              )}
+              {focusedField === "armHole" && (
+                <>
+                  <ellipse cx="42" cy="55" rx="3" ry="6" className="stroke-primary stroke-[2.5] fill-none animate-pulse" />
+                  <ellipse cx="78" cy="55" rx="3" ry="6" className="stroke-primary stroke-[2.5] fill-none animate-pulse" />
+                </>
               )}
             </svg>
           </div>

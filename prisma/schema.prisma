@@ -71,6 +71,7 @@ model Measurement {
   inseam            Float?
   sleeve            Float?
   shoulder          Float?
+  armHole           Float?
   
   updatedAt         DateTime        @updatedAt
 }
@@ -137,6 +138,7 @@ model Booking {
   inseam          Float?
   sleeve          Float?
   shoulder        Float?
+  armHole         Float?
   
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt

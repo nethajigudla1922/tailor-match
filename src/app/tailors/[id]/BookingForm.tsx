@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Calendar as CalendarIcon, MapPin, Scissors, Upload, Edit, Check, Ruler, AlertTriangle, Navigation } from "lucide-react";
  
@@ -58,7 +58,45 @@ function compressImage(file: File, callback: (compressedBase64: string) => void)
  
 export function BookingForm({ tailor, services, fabrics }: { tailor: any, services: any[], fabrics: any[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
+
+  // Restore pending booking state if requested and exists in localStorage
+  useEffect(() => {
+    const restore = searchParams.get("restore");
+    if (restore === "true") {
+      try {
+        const saved = localStorage.getItem("tailor_match_pending_booking");
+        if (saved) {
+          const booking = JSON.parse(saved);
+          
+          if (booking.selectedService) setSelectedService(booking.selectedService);
+          if (booking.selectedFabric) setSelectedFabric(booking.selectedFabric);
+          if (booking.fabricMeters) setFabricMeters(booking.fabricMeters);
+          if (booking.deliveryType) setDeliveryType(booking.deliveryType);
+          if (booking.appointmentDate) setAppointmentDate(booking.appointmentDate);
+          if (booking.appointmentTime) setAppointmentTime(booking.appointmentTime);
+          if (booking.notes) setNotes(booking.notes);
+          if (booking.referenceImage) setReferenceImage(booking.referenceImage);
+          if (booking.pickupAddress) setPickupAddress(booking.pickupAddress);
+          if (booking.pickupLatitude) setPickupLatitude(booking.pickupLatitude);
+          if (booking.pickupLongitude) setPickupLongitude(booking.pickupLongitude);
+
+
+          setIsReviewMode(true);
+          
+          // Clear it so it doesn't restore again on reload
+          localStorage.removeItem("tailor_match_pending_booking");
+          
+          // Remove the restore query param from the URL cleanly
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, "", newUrl);
+        }
+      } catch (err) {
+        console.error("Error restoring pending booking:", err);
+      }
+    }
+  }, [searchParams]);
   
   const [selectedService, setSelectedService] = useState("");
   const [selectedFabric, setSelectedFabric] = useState("");
@@ -75,17 +113,7 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
   const [pickupLongitude, setPickupLongitude] = useState("");
   const [gpsDetecting, setGpsDetecting] = useState(false);
  
-  // Named measurements state
-  const [savedMeasurements, setSavedMeasurements] = useState<any[]>([]);
-  const [selectedSavedProfileId, setSelectedSavedProfileId] = useState("");
-  const [measurementChoice, setMeasurementChoice] = useState("SAVED"); // SAVED or NEW
-  const [neck, setNeck] = useState("");
-  const [chest, setChest] = useState("");
-  const [waist, setWaist] = useState("");
-  const [hips, setHips] = useState("");
-  const [inseam, setInseam] = useState("");
-  const [sleeve, setSleeve] = useState("");
-  const [shoulder, setShoulder] = useState("");
+
  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -104,14 +132,16 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
  
   // Fetch saved address from customer profile
   useEffect(() => {
-    fetch("/api/customer/profile")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.address) {
-          setCustomerSavedAddress(data.address);
-        }
-      })
-      .catch((err) => console.error("Error fetching customer profile:", err));
+    if (session) {
+      fetch("/api/customer/profile")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.address) {
+            setCustomerSavedAddress(data.address);
+          }
+        })
+        .catch((err) => console.error("Error fetching customer profile:", err));
+    }
 
     const handleBookSimilar = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -133,7 +163,7 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
     return () => {
       window.removeEventListener("book-similar", handleBookSimilar);
     };
-  }, []);
+  }, [session]);
 
 
 
@@ -331,26 +361,6 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
     }
   }, [deliveryType, isReviewMode]);
  
-  // Fetch saved measurements list from API
-  useEffect(() => {
-    if (session) {
-      fetch("/api/measurements")
-        .then((res) => res.json())
-        .catch((err) => console.error("Error fetching measurements:", err))
-        .then((data) => {
-          if (data && Array.isArray(data) && data.length > 0) {
-            setSavedMeasurements(data);
-            setSelectedSavedProfileId(data[0].id);
-            setMeasurementChoice("SAVED");
-          } else {
-            setMeasurementChoice("NEW");
-          }
-        });
-    }
-  }, [session]);
- 
-  // Get active saved measurement set
-  const activeSavedProfile = savedMeasurements.find(p => p.id === selectedSavedProfileId);
  
   // Dynamic pricing calculation
   const serviceObj = services.find(s => s.id === selectedService);
@@ -375,64 +385,11 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
     }
   };
  
-  const handleApplyPreset = (size: string) => {
-    const presets: Record<string, Record<string, string>> = {
-      XS: { neck: "13.5", chest: "32", waist: "26", hips: "32", inseam: "28", sleeve: "31.5", shoulder: "16" },
-      S: { neck: "14.5", chest: "36", waist: "30", hips: "36", inseam: "29", sleeve: "32.5", shoulder: "17" },
-      M: { neck: "15.5", chest: "40", waist: "34", hips: "40", inseam: "30", sleeve: "33.5", shoulder: "18" },
-      L: { neck: "16.5", chest: "44", waist: "38", hips: "44", inseam: "31", sleeve: "34.5", shoulder: "19" },
-      XL: { neck: "17.5", chest: "48", waist: "42", hips: "48", inseam: "32", sleeve: "35.5", shoulder: "20" },
-      XXL: { neck: "18.5", chest: "52", waist: "46", hips: "52", inseam: "33", sleeve: "36.5", shoulder: "21" },
-    };
- 
-    const preset = presets[size];
-    if (preset) {
-      setNeck(preset.neck);
-      setChest(preset.chest);
-      setWaist(preset.waist);
-      setHips(preset.hips);
-      setInseam(preset.inseam);
-      setSleeve(preset.sleeve);
-      setShoulder(preset.shoulder);
-    }
-  };
- 
-  // Anatomically realistic sizing proportion warning math
-  const getSizeWarnings = () => {
-    const warnings: string[] = [];
-    const n = parseFloat(neck);
-    const c = parseFloat(chest);
-    const w = parseFloat(waist);
-    const h = parseFloat(hips);
-    const i = parseFloat(inseam);
-    const sl = parseFloat(sleeve);
-    const sh = parseFloat(shoulder);
- 
-    if (neck && (n < 10 || n > 25)) warnings.push("Neck size seems atypical (standard is 10-25 inches).");
-    if (chest && (c < 25 || c > 75)) warnings.push("Chest size seems atypical (standard is 25-75 inches).");
-    if (waist && (w < 20 || w > 75)) warnings.push("Waist size seems atypical (standard is 20-75 inches).");
-    if (hips && (h < 25 || h > 80)) warnings.push("Hips size seems atypical (standard is 25-80 inches).");
-    if (inseam && (i < 15 || i > 45)) warnings.push("Inseam size seems atypical (standard is 15-45 inches).");
-    if (sleeve && (sl < 15 || sl > 45)) warnings.push("Sleeve size seems atypical (standard is 15-45 inches).");
-    if (shoulder && (sh < 10 || sh > 30)) warnings.push("Shoulder width seems atypical (standard is 10-30 inches).");
- 
-    if (chest && waist && Math.abs(c - w) > 25) {
-      warnings.push(`Waist (${w}") and Chest (${c}") ratio seems highly atypical for standard designs.`);
-    }
-    if (waist && hips && h < w - 10) {
-      warnings.push(`Hip measurement (${h}") is unusually narrow compared to waist (${w}").`);
-    }
- 
-    return warnings;
-  };
+
  
   const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) {
-      router.push("/login");
-      return;
-    }
-    if ((session.user as any).role !== "CUSTOMER") {
+    if (session && (session.user as any).role !== "CUSTOMER") {
       setError("Only customers can book appointments.");
       return;
     }
@@ -442,10 +399,6 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
     }
     if (!appointmentDate) {
       setError("Please select a date.");
-      return;
-    }
-    if (measurementChoice === "NEW" && !neck && !chest && !waist && !hips) {
-      setError("Please enter at least a few measurement values for the custom fit.");
       return;
     }
     if (deliveryType === "HOME_VISIT") {
@@ -473,28 +426,39 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!session) {
+      const pendingBooking = {
+        selectedService,
+        selectedFabric,
+        fabricMeters,
+        deliveryType,
+        appointmentDate,
+        appointmentTime,
+        notes,
+        referenceImage,
+        pickupAddress,
+        pickupLatitude,
+        pickupLongitude,
+      };
+      try {
+        localStorage.setItem("tailor_match_pending_booking", JSON.stringify(pendingBooking));
+      } catch (err) {
+        console.error("Error saving pending booking:", err);
+      }
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/tailors/${tailor.id}?restore=true`)}`);
+      return;
+    }
+
+    if ((session.user as any).role !== "CUSTOMER") {
+      setError("Only customers can book appointments.");
+      return;
+    }
+
     setLoading(true);
     setError("");
  
     // Determine measurements payload
-    const measurementsToSubmit = measurementChoice === "SAVED" && activeSavedProfile ? {
-      neck: activeSavedProfile.neck ? parseFloat(activeSavedProfile.neck) : null,
-      chest: activeSavedProfile.chest ? parseFloat(activeSavedProfile.chest) : null,
-      waist: activeSavedProfile.waist ? parseFloat(activeSavedProfile.waist) : null,
-      hips: activeSavedProfile.hips ? parseFloat(activeSavedProfile.hips) : null,
-      inseam: activeSavedProfile.inseam ? parseFloat(activeSavedProfile.inseam) : null,
-      sleeve: activeSavedProfile.sleeve ? parseFloat(activeSavedProfile.sleeve) : null,
-      shoulder: activeSavedProfile.shoulder ? parseFloat(activeSavedProfile.shoulder) : null,
-    } : {
-      neck: neck ? parseFloat(neck) : null,
-      chest: chest ? parseFloat(chest) : null,
-      waist: waist ? parseFloat(waist) : null,
-      hips: hips ? parseFloat(hips) : null,
-      inseam: inseam ? parseFloat(inseam) : null,
-      sleeve: sleeve ? parseFloat(sleeve) : null,
-      shoulder: shoulder ? parseFloat(shoulder) : null,
-    };
- 
     try {
       const res = await fetch("/api/bookings", {
         method: "POST",
@@ -512,7 +476,6 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
           pickupAddress: deliveryType === "HOME_VISIT" ? pickupAddress : null,
           pickupLatitude: deliveryType === "HOME_VISIT" ? parseFloat(pickupLatitude) : null,
           pickupLongitude: deliveryType === "HOME_VISIT" ? parseFloat(pickupLongitude) : null,
-          ...measurementsToSubmit
         }),
       });
  
@@ -696,153 +659,18 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
             </div>
           )}
  
-          {/* Measurement Sourcing Choice */}
-          <div className="p-4 border border-border rounded-xl bg-background/30 space-y-3">
-            <label className="block text-sm font-medium text-primary flex items-center gap-1.5">
-              <Ruler className="w-4 h-4" />
-              Fitting & Sizing Instructions
+          {/* Sizing & Measurement Notice */}
+          <div className="p-5 border border-primary/20 rounded-2xl bg-primary/5 space-y-3 shadow-sm text-left">
+            <label className="block text-sm font-extrabold text-primary flex items-center gap-1.5">
+              <Scissors className="w-4 h-4 text-primary animate-pulse" />
+              Professional Fitting & Sizing
             </label>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <button
-                type="button"
-                disabled={savedMeasurements.length === 0}
-                onClick={() => setMeasurementChoice("SAVED")}
-                className={`py-2 rounded-xl border font-semibold transition-all ${
-                  measurementChoice === "SAVED"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border/50 bg-background/50 text-muted-foreground disabled:opacity-40 disabled:pointer-events-none"
-                }`}
-              >
-                Use Saved Sizing
-              </button>
-              <button
-                type="button"
-                onClick={() => setMeasurementChoice("NEW")}
-                className={`py-2 rounded-xl border font-semibold transition-all ${
-                  measurementChoice === "NEW"
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border/50 bg-background/50 text-muted-foreground"
-                }`}
-              >
-                Enter New Sizing
-              </button>
+            <p className="text-xs text-foreground/80 leading-relaxed">
+              No need to take measurements yourself! The tailor will professionally record all necessary sizing parameters during your **{deliveryType === "HOME_VISIT" ? "Home Visit" : "Shop Studio Visit"}**.
+            </p>
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 bg-background/50 p-2.5 rounded-xl border border-border/40 font-medium">
+              <span>💡 Tip: Feel free to mention any specific fit requests or details in the notes section below!</span>
             </div>
- 
-            {measurementChoice === "SAVED" && savedMeasurements.length > 0 && (
-              <div className="space-y-3 pt-2">
-                <div>
-                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">Select Sizing Profile:</label>
-                  <select
-                    value={selectedSavedProfileId}
-                    onChange={(e) => setSelectedSavedProfileId(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-primary text-xs font-semibold"
-                  >
-                    {savedMeasurements.map((p: any) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
- 
-                {activeSavedProfile && (
-                  <div className="p-3 bg-primary/5 rounded-lg border border-primary/15 text-[11px] space-y-1.5">
-                    <span className="font-bold text-primary block">Sizing Preview ({activeSavedProfile.name}):</span>
-                    <div className="grid grid-cols-3 gap-1 text-foreground/80">
-                      {activeSavedProfile.neck && <div>Neck: {activeSavedProfile.neck}"</div>}
-                      {activeSavedProfile.chest && <div>Chest: {activeSavedProfile.chest}"</div>}
-                      {activeSavedProfile.waist && <div>Waist: {activeSavedProfile.waist}"</div>}
-                      {activeSavedProfile.hips && <div>Hips: {activeSavedProfile.hips}"</div>}
-                      {activeSavedProfile.inseam && <div>Inseam: {activeSavedProfile.inseam}"</div>}
-                      {activeSavedProfile.sleeve && <div>Sleeve: {activeSavedProfile.sleeve}"</div>}
-                      {activeSavedProfile.shoulder && <div>Shoulder: {activeSavedProfile.shoulder}"</div>}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {measurementChoice === "NEW" && (
-              <div className="space-y-3 pt-2">
-                <span className="text-[11px] font-bold text-muted-foreground block">Quick Standard Sizes Preset:</span>
-                <div className="flex flex-wrap gap-1.5 pb-1">
-                  {["XS", "S", "M", "L", "XL", "XXL"].map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => handleApplyPreset(size)}
-                      className="px-2.5 py-1 bg-background border border-border/60 hover:bg-primary/10 hover:text-primary hover:border-primary/30 rounded-lg text-[10px] font-black tracking-wide transition-all cursor-pointer"
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-
-                <span className="text-[11px] font-bold text-muted-foreground block">Enter Sizing just for this Order (inches):</span>
- 
-                {/* Anatomical Proportional Warnings */}
-                {getSizeWarnings().length > 0 && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-600 rounded-xl p-3.5 text-xs space-y-1 my-2">
-                    <p className="font-bold flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 animate-pulse text-yellow-500" />
-                      Proportional Size Alert:
-                    </p>
-                    <ul className="list-disc pl-4 space-y-0.5">
-                      {getSizeWarnings().map((w, idx) => <li key={idx}>{w}</li>)}
-                    </ul>
-                  </div>
-                )}
- 
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Neck</label>
-                    <input
-                      type="number" step="0.1" value={neck}
-                      onChange={(e) => setNeck(e.target.value)}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Chest</label>
-                    <input
-                      type="number" step="0.1" value={chest}
-                      onChange={(e) => setChest(e.target.value)}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Waist</label>
-                    <input
-                      type="number" step="0.1" value={waist}
-                      onChange={(e) => setWaist(e.target.value)}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Hips</label>
-                    <input
-                      type="number" step="0.1" value={hips}
-                      onChange={(e) => setHips(e.target.value)}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Inseam</label>
-                    <input
-                      type="number" step="0.1" value={inseam}
-                      onChange={(e) => setInseam(e.target.value)}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Sleeve</label>
-                    <input
-                      type="number" step="0.1" value={sleeve}
-                      onChange={(e) => setSleeve(e.target.value)}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none text-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
  
           <div>

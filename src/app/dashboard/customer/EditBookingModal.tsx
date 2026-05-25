@@ -21,13 +21,6 @@ export function EditBookingModal({ booking }: { booking: any }) {
     deliveryType: booking.deliveryType || "SHOP_VISIT",
     notes: booking.notes || "",
     referenceImage: booking.referenceImage || null,
-    neck: booking.neck !== null && booking.neck !== undefined ? booking.neck.toString() : "",
-    chest: booking.chest !== null && booking.chest !== undefined ? booking.chest.toString() : "",
-    waist: booking.waist !== null && booking.waist !== undefined ? booking.waist.toString() : "",
-    hips: booking.hips !== null && booking.hips !== undefined ? booking.hips.toString() : "",
-    inseam: booking.inseam !== null && booking.inseam !== undefined ? booking.inseam.toString() : "",
-    sleeve: booking.sleeve !== null && booking.sleeve !== undefined ? booking.sleeve.toString() : "",
-    shoulder: booking.shoulder !== null && booking.shoulder !== undefined ? booking.shoulder.toString() : "",
   });
 
 function compressImage(file: File, callback: (compressedBase64: string) => void) {
@@ -226,75 +219,7 @@ function compressImage(file: File, callback: (compressedBase64: string) => void)
                 />
               </div>
 
-              {/* Order Specific Measurements */}
-              <div className="bg-background/40 p-4 rounded-xl border border-border space-y-3">
-                <h4 className="text-xs font-bold text-primary">Custom Sizes for this Specific Order (in/cm)</h4>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Neck</label>
-                    <input
-                      type="number" step="0.1"
-                      value={formData.neck}
-                      onChange={(e) => setFormData({ ...formData, neck: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Chest</label>
-                    <input
-                      type="number" step="0.1"
-                      value={formData.chest}
-                      onChange={(e) => setFormData({ ...formData, chest: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Waist</label>
-                    <input
-                      type="number" step="0.1"
-                      value={formData.waist}
-                      onChange={(e) => setFormData({ ...formData, waist: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Hips</label>
-                    <input
-                      type="number" step="0.1"
-                      value={formData.hips}
-                      onChange={(e) => setFormData({ ...formData, hips: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Inseam</label>
-                    <input
-                      type="number" step="0.1"
-                      value={formData.inseam}
-                      onChange={(e) => setFormData({ ...formData, inseam: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Sleeve</label>
-                    <input
-                      type="number" step="0.1"
-                      value={formData.sleeve}
-                      onChange={(e) => setFormData({ ...formData, sleeve: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-muted-foreground mb-1">Shoulder</label>
-                    <input
-                      type="number" step="0.1"
-                      value={formData.shoulder}
-                      onChange={(e) => setFormData({ ...formData, shoulder: e.target.value })}
-                      className="w-full bg-background border border-border rounded-lg px-2 py-1 outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
+
 
               {/* Actions */}
               <div className="flex gap-3 pt-2">

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { MapPin, Star, Scissors, Clock, Navigation } from "lucide-react";
@@ -26,9 +27,9 @@ export default async function TailorDetailsPage({ params }: { params: Promise<{ 
  
   // Fallback services if the tailor hasn't added any yet (for MVP demonstration)
   const displayServices = tailor.services.length > 0 ? tailor.services : [
-    { id: "mock-1", name: "Custom Men's Suit", price: 150.00 },
-    { id: "mock-2", name: "Dress Alteration", price: 35.00 },
-    { id: "mock-3", name: "Bridal Fitting", price: 200.00 }
+    { id: "mock-1", name: "Custom Men's Suit", price: 150.00, description: "A bespoke two-piece men's suit tailored to perfection." },
+    { id: "mock-2", name: "Dress Alteration", price: 35.00, description: "Professional alterations for dresses, skirts, and high fashion garments." },
+    { id: "mock-3", name: "Bridal Fitting", price: 200.00, description: "Precision adjustments and customizations for bridal wear." }
   ];
  
   // Calculate average rating
@@ -91,9 +92,16 @@ export default async function TailorDetailsPage({ params }: { params: Promise<{ 
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {displayServices.map((svc: any) => (
-                <div key={svc.id} className="p-6 rounded-2xl bg-background/50 border border-border hover:border-primary/50 transition-colors">
-                  <h3 className="font-bold text-lg">{svc.name}</h3>
-                  <p className="text-primary font-medium mt-2">From ₹{svc.price.toFixed(2)}</p>
+                <div key={svc.id} className="p-6 rounded-2xl bg-background/50 border border-border hover:border-primary/50 transition-colors flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg">{svc.name}</h3>
+                    {svc.description && (
+                      <p className="text-sm text-muted-foreground mt-2 italic leading-relaxed">
+                        {svc.description}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-primary font-extrabold text-sm mt-4">From ₹{svc.price.toFixed(2)}</p>
                 </div>
               ))}
             </div>
@@ -203,7 +211,14 @@ export default async function TailorDetailsPage({ params }: { params: Promise<{ 
         {/* Right Column: Booking Form */}
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <BookingForm tailor={tailor} services={displayServices} fabrics={tailor.fabrics || []} />
+            <Suspense fallback={
+              <div className="glass p-8 rounded-3xl border border-border/50 text-center animate-pulse">
+                <Scissors className="w-8 h-8 text-primary mx-auto mb-3 animate-spin" />
+                <p className="text-muted-foreground text-sm font-semibold">Loading Booking Studio...</p>
+              </div>
+            }>
+              <BookingForm tailor={tailor} services={displayServices} fabrics={tailor.fabrics || []} />
+            </Suspense>
           </div>
         </div>
       </div>

@@ -1,20 +1,28 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 import { Scissors, Calendar, MapPin } from "lucide-react";
 import { AddServiceForm } from "./AddServiceForm";
+import { ServiceManager } from "./ServiceManager";
 import { ProfileForm } from "./ProfileForm";
 import { AddFabricForm } from "./AddFabricForm";
 import { BookingStatusButtons } from "./BookingStatusButtons";
 import { BookingTracker } from "@/components/BookingTracker";
 import { BookingChat } from "@/components/BookingChat";
-import { MilestoneManager } from "./MilestoneManager";
 import { PortfolioManager } from "./PortfolioManager";
+import { RecordMeasurementsModal } from "./RecordMeasurementsModal";
 
 export default async function TailorDashboard() {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user) return null;
+  if (!session || !session.user) {
+    redirect("/login");
+  }
+
+  if ((session.user as any).role !== "TAILOR") {
+    redirect("/dashboard");
+  }
 
   const tailorProfile = await prisma.tailorProfile.findUnique({
     where: { userId: session.user.id as string },
@@ -53,17 +61,7 @@ export default async function TailorDashboard() {
                 <p>You haven't listed any services yet.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {services.map(svc => (
-                  <div key={svc.id} className="p-4 rounded-xl border border-border bg-background/30 flex justify-between items-center">
-                    <div>
-                      <h3 className="font-bold">{svc.name}</h3>
-                      <p className="text-sm text-muted-foreground">{svc.category} • {svc.occasion}</p>
-                    </div>
-                    <div className="font-bold text-primary">₹{svc.price.toFixed(2)}</div>
-                  </div>
-                ))}
-              </div>
+              <ServiceManager initialServices={services} />
             )}
             
             <AddServiceForm />
@@ -127,19 +125,39 @@ export default async function TailorDashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {bookings.map(booking => (
-                <div key={booking.id} className="p-4 rounded-xl bg-background/50 border border-border hover:border-primary/50 transition-colors cursor-pointer">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold">{booking.customer.user.name || "Customer"}</h3>
-                    <span className="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded font-bold uppercase">{booking.status}</span>
-                  </div>
-                  <p className="text-sm text-foreground/80 mb-2">{booking.service.name}</p>
-                  <div className="flex items-center text-xs text-muted-foreground font-medium mb-2">
-                    <Calendar className="w-3 h-3 mr-1" />
-                    {booking.appointmentDate.toLocaleDateString()} at {booking.appointmentTime}
-                  </div>
-                  <BookingTracker status={booking.status} />
-                  <MilestoneManager bookingId={booking.id} />
+              {bookings.map(booking => {
+                const statusStyles: Record<string, string> = {
+                  PENDING: "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20",
+                  ACCEPTED: "bg-blue-500/10 text-blue-500 border border-blue-500/20",
+                  HOME_VISIT: "bg-purple-500/10 text-purple-500 border border-purple-500/20",
+                  IN_PROGRESS: "bg-sky-500/10 text-sky-500 border border-sky-500/20",
+                  COMPLETED: "bg-green-500/10 text-green-500 border border-green-500/20",
+                  REJECTED: "bg-red-500/10 text-red-500 border border-red-500/20"
+                };
+
+                const statusLabels: Record<string, string> = {
+                  PENDING: "Request Sent",
+                  ACCEPTED: "Tailor Confirmed",
+                  HOME_VISIT: "Home Visit",
+                  IN_PROGRESS: "In Sewing",
+                  COMPLETED: "Completed",
+                  REJECTED: "Declined"
+                };
+
+                return (
+                  <div key={booking.id} className="p-4 rounded-xl bg-background/50 border border-border hover:border-primary/50 transition-colors cursor-pointer">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-bold">{booking.customer.user.name || "Customer"}</h3>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-black uppercase ${statusStyles[booking.status] || "bg-yellow-500/20 text-yellow-500"}`}>
+                        {statusLabels[booking.status] || booking.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground/80 mb-2">{booking.service.name}</p>
+                    <div className="flex items-center text-xs text-muted-foreground font-medium mb-2">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      {booking.appointmentDate.toLocaleDateString()} at {booking.appointmentTime}
+                    </div>
+                    <BookingTracker status={booking.status} deliveryType={booking.deliveryType} />
                   {booking.payment && (
                     <div className="mt-2.5 p-2.5 bg-background/40 border border-border/80 rounded-xl text-xs flex justify-between items-center">
                       <span className="font-bold text-muted-foreground">Earnings:</span>
@@ -187,18 +205,31 @@ export default async function TailorDashboard() {
                       </>
                     )}
                   </div>
-                  {(booking.neck || booking.chest || booking.waist || booking.hips || booking.inseam || booking.sleeve || booking.shoulder) && (
-                    <div className="mt-3 p-3 bg-primary/5 rounded-xl border border-primary/10 text-xs">
-                      <p className="font-bold text-primary mb-2">Order Measurements:</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {booking.neck && <div><strong>Neck:</strong> {booking.neck}</div>}
-                        {booking.chest && <div><strong>Chest:</strong> {booking.chest}</div>}
-                        {booking.waist && <div><strong>Waist:</strong> {booking.waist}</div>}
-                        {booking.hips && <div><strong>Hips:</strong> {booking.hips}</div>}
-                        {booking.inseam && <div><strong>Inseam:</strong> {booking.inseam}</div>}
-                        {booking.sleeve && <div><strong>Sleeve:</strong> {booking.sleeve}</div>}
-                        {booking.shoulder && <div><strong>Shoulder:</strong> {booking.shoulder}</div>}
+                  {(booking.neck || booking.chest || booking.waist || booking.hips || booking.inseam || booking.sleeve || booking.shoulder || booking.armHole) ? (
+                    <div className="mt-3 p-3 bg-primary/5 rounded-xl border border-primary/10 text-xs text-left">
+                      <div className="flex justify-between items-center mb-2 border-b border-primary/10 pb-1.5">
+                        <span className="font-bold text-primary">Order Measurements:</span>
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase uppercase">Recorded</span>
                       </div>
+                      <div className="grid grid-cols-3 gap-2 text-foreground/80">
+                        {booking.neck && <div><strong>Neck:</strong> {booking.neck}"</div>}
+                        {booking.chest && <div><strong>Chest:</strong> {booking.chest}"</div>}
+                        {booking.waist && <div><strong>Waist:</strong> {booking.waist}"</div>}
+                        {booking.hips && <div><strong>Hips:</strong> {booking.hips}"</div>}
+                        {booking.inseam && <div><strong>Inseam:</strong> {booking.inseam}"</div>}
+                        {booking.sleeve && <div><strong>Sleeve:</strong> {booking.sleeve}"</div>}
+                        {booking.shoulder && <div><strong>Shoulder:</strong> {booking.shoulder}"</div>}
+                        {booking.armHole && <div><strong>Arm Hole:</strong> {booking.armHole}"</div>}
+                      </div>
+                      <RecordMeasurementsModal booking={booking} />
+                    </div>
+                  ) : (
+                    <div className="mt-3 p-4 bg-background/30 rounded-xl border border-border text-xs text-center space-y-2 text-left">
+                      <p className="text-muted-foreground italic font-semibold">No digital sizing recorded yet.</p>
+                      <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+                        (Optional: You can log measurements here for digital tracking and order transparency, or keep them offline in your physical register/shop diary.)
+                      </p>
+                      <RecordMeasurementsModal booking={booking} />
                     </div>
                   )}
                   {booking.referenceImage && (
@@ -214,9 +245,9 @@ export default async function TailorDashboard() {
                     </div>
                   )}
                   <BookingChat bookingId={booking.id} currentUserRole="TAILOR" />
-                  <BookingStatusButtons bookingId={booking.id} currentStatus={booking.status} />
+                  <BookingStatusButtons bookingId={booking.id} currentStatus={booking.status} deliveryType={booking.deliveryType} />
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>
