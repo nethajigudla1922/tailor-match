@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Providers } from "@/components/Providers";
 import { SupportChatBot } from "@/components/SupportChatBot";
+import FirebaseAnalytics from "@/components/FirebaseAnalytics";
 
 const outfit = Outfit({
   variable: "--font-sans",
@@ -25,6 +26,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${outfit.variable} font-sans antialiased min-h-screen flex flex-col`}>
         <Providers>
+          <FirebaseAnalytics />
           <Navbar />
           <main className="flex-1">
             {children}
