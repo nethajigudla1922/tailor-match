@@ -33,9 +33,11 @@ export async function PATCH(req: Request) {
     const updatedBooking = await prisma.booking.update({
       where: { id: booking.id },
       data: {
-        status: data.status
+        status: data.status !== undefined ? data.status : undefined,
+        customerUpdated: data.acknowledgeUpdate === true ? false : undefined
       }
     });
+
 
     return NextResponse.json(updatedBooking);
   } catch (error) {

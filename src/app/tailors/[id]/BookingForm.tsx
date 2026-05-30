@@ -70,7 +70,11 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
         if (saved) {
           const booking = JSON.parse(saved);
           
-          if (booking.selectedService) setSelectedService(booking.selectedService);
+          if (booking.selectedServices) {
+            setSelectedServices(booking.selectedServices);
+          } else if (booking.selectedService) {
+            setSelectedServices([booking.selectedService]);
+          }
           if (booking.selectedFabric) setSelectedFabric(booking.selectedFabric);
           if (booking.fabricMeters) setFabricMeters(booking.fabricMeters);
           if (booking.deliveryType) setDeliveryType(booking.deliveryType);
@@ -98,7 +102,7 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
     }
   }, [searchParams]);
   
-  const [selectedService, setSelectedService] = useState("");
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedFabric, setSelectedFabric] = useState("");
   const [fabricMeters, setFabricMeters] = useState(3);
   const [deliveryType, setDeliveryType] = useState("SHOP_VISIT");
@@ -363,10 +367,11 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
  
  
   // Dynamic pricing calculation
-  const serviceObj = services.find(s => s.id === selectedService);
   const fabricObj = fabrics.find(f => f.id === selectedFabric);
   
-  const servicePrice = serviceObj ? serviceObj.price : 0;
+  const servicePrice = services
+    .filter(s => selectedServices.includes(s.id))
+    .reduce((sum, s) => sum + s.price, 0);
   const fabricPrice = fabricObj ? fabricObj.pricePerMeter * fabricMeters : 0;
   
   // Dynamic Dynamic travel fee: Base tailor travel fee + ₹15 per GPS km
@@ -393,12 +398,17 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
       setError("Only customers can book appointments.");
       return;
     }
-    if (!selectedService) {
-      setError("Please select a service.");
+    if (selectedServices.length === 0) {
+      setError("Please select at least one service.");
       return;
     }
     if (!appointmentDate) {
       setError("Please select a date.");
+      return;
+    }
+    // Prevent past dates
+    if (new Date(appointmentDate) < new Date(new Date().setHours(0,0,0,0))) {
+      setError("Please select a present or future date.");
       return;
     }
     if (deliveryType === "HOME_VISIT") {
@@ -429,7 +439,7 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
 
     if (!session) {
       const pendingBooking = {
-        selectedService,
+        selectedServices,
         selectedFabric,
         fabricMeters,
         deliveryType,
@@ -465,7 +475,7 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tailorId: tailor.id,
-          serviceId: selectedService,
+          serviceIds: selectedServices,
           fabricId: selectedFabric || undefined,
           deliveryType,
           appointmentDate,
@@ -526,9 +536,18 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
         // REVIEW MODE UI
         <div className="space-y-6">
           <div className="bg-background/40 p-5 rounded-2xl border border-border/40 space-y-4">
-            <div className="flex justify-between border-b border-border/50 pb-2">
-              <span className="text-sm text-muted-foreground">Selected Service</span>
-              <span className="font-semibold text-foreground">{serviceObj?.name}</span>
+            <div className="border-b border-border/50 pb-2 space-y-1 text-left">
+              <span className="text-sm text-muted-foreground block">Selected Services</span>
+              <div className="space-y-1">
+                {services
+                  .filter(s => selectedServices.includes(s.id))
+                  .map(s => (
+                    <div key={s.id} className="flex justify-between text-sm font-semibold">
+                      <span>• {s.name}</span>
+                      <span>₹{s.price.toFixed(0)}</span>
+                    </div>
+                  ))}
+              </div>
             </div>
  
             {fabricObj && (
@@ -614,20 +633,42 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
         // EDIT MODE UI
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium mb-2">Select Service</label>
-            <select 
-              required
-              value={selectedService}
-              onChange={(e) => setSelectedService(e.target.value)}
-              className="w-full bg-background/50 border border-border rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="" disabled>Choose a service...</option>
-              {services.map((svc) => (
-                <option key={svc.id} value={svc.id}>
-                  {svc.name} - ₹{svc.price.toFixed(2)}
-                </option>
-              ))}
-            </select>
+            <label className="block text-sm font-extrabold mb-3">Select Services (Select one or more)</label>
+            <div className="space-y-3">
+              {services.map((svc) => {
+                const isSelected = selectedServices.includes(svc.id);
+                return (
+                  <div 
+                    key={svc.id}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedServices(selectedServices.filter(id => id !== svc.id));
+                      } else {
+                        setSelectedServices([...selectedServices, svc.id]);
+                      }
+                    }}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
+                      isSelected 
+                        ? "border-primary bg-primary/5 text-foreground" 
+                        : "border-border bg-background/30 hover:border-primary/40 text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                        isSelected ? "bg-primary border-primary text-primary-foreground" : "border-border bg-background"
+                      }`}>
+                        {isSelected && <Check className="w-3.5 h-3.5 font-bold" />}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm">{svc.name}</h4>
+                        {svc.description && <p className="text-xs text-muted-foreground mt-0.5">{svc.description}</p>}
+                      </div>
+                    </div>
+                    <div className="font-extrabold text-sm text-primary">₹{svc.price.toFixed(0)}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
  
           {fabrics.length > 0 && (
@@ -734,27 +775,27 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
                 </div>
 
                 {/* Quick Actions for Swiggy/Zepto Feel */}
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="flex space-x-2 text-xs">
                   {customerSavedAddress && (
                     <button
                       type="button"
                       onClick={useSavedAddressAction}
-                      className="py-2.5 px-3 border border-border/60 bg-background/50 hover:bg-background/80 hover:border-primary/30 text-foreground font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                      className="py-1.5 px-2 bg-primary/5 hover:bg-primary/10 rounded-lg text-[10px] flex items-center space-x-1 border-none shadow-none cursor-pointer text-primary transition-all font-bold"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-primary">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
                       </svg>
-                      Saved Home Address
+                      <span>Saved Address</span>
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={useCurrentLocation}
                     disabled={gpsDetecting}
-                    className={`py-2.5 px-3 border border-border/60 bg-background/50 hover:bg-background/80 hover:border-primary/30 text-foreground font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer ${gpsDetecting ? 'opacity-70' : ''}`}
+                    className="py-1.5 px-2 bg-primary/5 hover:bg-primary/10 rounded-lg text-[10px] flex items-center space-x-1 border-none shadow-none cursor-pointer text-primary transition-all font-bold"
                   >
-                    <Navigation className={`w-3.5 h-3.5 text-primary ${gpsDetecting ? 'animate-spin' : ''}`} />
-                    {gpsDetecting ? "GPS Locating..." : "Use Current GPS"}
+                    <Navigation className={`w-3 h-3 ${gpsDetecting ? 'animate-spin' : ''}`} />
+                    <span>{gpsDetecting ? "GPS Locating..." : "Use Current GPS"}</span>
                   </button>
                 </div>
 
@@ -807,6 +848,7 @@ export function BookingForm({ tailor, services, fabrics }: { tailor: any, servic
               <input 
                 type="date" 
                 required
+                min={new Date().toISOString().split("T")[0]}
                 value={appointmentDate}
                 onChange={(e) => setAppointmentDate(e.target.value)}
                 className="w-full bg-background/50 border border-border rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm"

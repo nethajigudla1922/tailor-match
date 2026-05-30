@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { 
-      tailorId, serviceId, fabricId, deliveryType, appointmentDate, appointmentTime, notes, referenceImage, totalPrice,
+      tailorId, serviceId, serviceIds, fabricId, deliveryType, appointmentDate, appointmentTime, notes, referenceImage, totalPrice,
       neck, chest, waist, hips, inseam, sleeve, shoulder, armHole
     } = body;
 
@@ -38,6 +38,11 @@ export async function POST(req: Request) {
 
     if (!tailor) {
       return NextResponse.json({ error: "Tailor not found" }, { status: 404 });
+    }
+
+    const selectedServiceIds = serviceIds || (serviceId ? [serviceId] : []);
+    if (selectedServiceIds.length === 0) {
+      return NextResponse.json({ error: "Please select at least one service." }, { status: 400 });
     }
 
     let finalDistance: number | null = null;
@@ -88,7 +93,10 @@ export async function POST(req: Request) {
       data: {
         customerId: customer.id,
         tailorId,
-        serviceId,
+        serviceId: selectedServiceIds[0],
+        services: {
+          connect: selectedServiceIds.map((id: string) => ({ id }))
+        },
         deliveryType,
         appointmentDate: new Date(appointmentDate),
         appointmentTime,
@@ -142,7 +150,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { bookingId, appointmentDate, appointmentTime, notes, referenceImage, deliveryType, neck, chest, waist, hips, inseam, sleeve, shoulder, armHole } = body;
+    const { bookingId, appointmentDate, appointmentTime, notes, referenceImage, deliveryType, neck, chest, waist, hips, inseam, sleeve, shoulder, armHole, status } = body;
 
     let booking;
     if (role === "CUSTOMER") {
@@ -181,6 +189,8 @@ export async function PATCH(req: Request) {
         notes: notes !== undefined ? notes : undefined,
         referenceImage: referenceImage !== undefined ? referenceImage : undefined,
         deliveryType: deliveryType || undefined,
+        status: status === "CANCELLED" ? "CANCELLED" : undefined,
+        customerUpdated: status !== "CANCELLED" ? true : undefined, // flag as customer updated if not a cancellation
       };
     } else {
       updateData = {

@@ -11,7 +11,8 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String?   @unique
+  phone         String?   @unique
   passwordHash  String?
   role          String    @default("CUSTOMER") // CUSTOMER, TAILOR, ADMIN
   createdAt     DateTime  @default(now())
@@ -53,6 +54,7 @@ model CustomerProfile {
   
   address        String?
   city           String?
+  profilePicture String?
   
   measurements   Measurement[]
   bookings       Booking[]
@@ -90,6 +92,7 @@ model Service {
   estimatedDays   Int?
   
   bookings        Booking[]
+  multipleBookings Booking[]    @relation("MultipleServices")
 }
 
 model Fabric {
@@ -112,8 +115,9 @@ model Booking {
   tailorId        String
   tailor          TailorProfile       @relation(fields: [tailorId], references: [id])
   
-  serviceId       String
-  service         Service             @relation(fields: [serviceId], references: [id])
+  serviceId       String?
+  service         Service?            @relation(fields: [serviceId], references: [id])
+  services        Service[]           @relation("MultipleServices")
   
   status          String              @default("PENDING") // PENDING, ACCEPTED, COMPLETED...
   deliveryType    String              // HOME_VISIT, SHOP_VISIT
@@ -126,6 +130,7 @@ model Booking {
   pickupLatitude  Float?
   pickupLongitude Float?
   distance        Float?
+  customerUpdated Boolean             @default(false)
   
   payment         Payment?            // Link to the escrow payment
   chatMessages    ChatMessage[]

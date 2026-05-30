@@ -28,7 +28,7 @@ interface Payment {
 interface Booking {
   id: string;
   status: string;
-  serviceId: string;
+  serviceId: string | null;
   payment: Payment | null;
 }
 
@@ -49,7 +49,7 @@ interface TailorProfile {
 interface TailorUser {
   id: string;
   name: string | null;
-  email: string;
+  email: string | null;
   createdAt: Date;
   tailorProfile: TailorProfile | null;
 }
@@ -76,10 +76,11 @@ interface CustomerProfile {
 interface CustomerUser {
   id: string;
   name: string | null;
-  email: string;
+  email: string | null;
   createdAt: Date;
   customerProfile: CustomerProfile | null;
 }
+
 
 interface AdminDashboardClientProps {
   tailors: TailorUser[];
@@ -134,7 +135,7 @@ export function AdminDashboardClient({ tailors, customers, stats }: AdminDashboa
   // Filter tailors based on search
   const filteredTailors = tailors.filter(t => {
     const name = t.name?.toLowerCase() || "";
-    const email = t.email.toLowerCase();
+    const email = t.email?.toLowerCase() || "";
     const shopName = t.tailorProfile?.shopName?.toLowerCase() || "";
     const city = t.tailorProfile?.city?.toLowerCase() || "";
     const query = searchQuery.toLowerCase();
@@ -144,11 +145,12 @@ export function AdminDashboardClient({ tailors, customers, stats }: AdminDashboa
   // Filter customers based on search
   const filteredCustomers = customers.filter(c => {
     const name = c.name?.toLowerCase() || "";
-    const email = c.email.toLowerCase();
+    const email = c.email?.toLowerCase() || "";
     const city = c.customerProfile?.city?.toLowerCase() || "";
     const query = searchQuery.toLowerCase();
     return name.includes(query) || email.includes(query) || city.includes(query);
   });
+
 
   const selectedTailor = tailors.find(t => t.id === selectedTailorId);
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
